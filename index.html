@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WA Legislation Tracker</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f4f8; color: #1a2332; font-size: 14px; }
+  .header { background: linear-gradient(135deg, #1F4E79 0%, #2E74B5 100%); color: white; padding: 20px 24px 16px; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .header-meta { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .badge { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 500; }
+  .badge.urgent { background: #C00000; }
+  .tabs { display: flex; background: white; border-bottom: 2px solid #e2e8f0; padding: 0 20px; gap: 0; overflow-x: auto; }
+  .tab { padding: 10px 14px; font-size: 13px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; transition: all 0.15s; }
+  .tab:hover { color: #1F4E79; }
+  .tab.active { color: #1F4E79; border-bottom-color: #1F4E79; }
+  .content { padding: 18px 20px; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .alert-banner { background: #fff3cd; border: 1px solid #ffc107; border-left: 4px solid #C55A11; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
+  .alert-banner strong { display: block; margin-bottom: 3px; color: #7B3800; }
+  .law-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  @media (max-width: 580px) { .law-grid { grid-template-columns: 1fr; } }
+  .law-card { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid #ccc; }
+  .law-card.critical { border-left-color: #C00000; }
+  .law-card.warning { border-left-color: #C55A11; }
+  .law-card.monitor { border-left-color: #1F4E79; }
+  .law-card.relief { border-left-color: #375623; }
+  .law-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 3px; }
+  .law-title { font-size: 14px; font-weight: 600; color: #1a2332; margin-bottom: 8px; }
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pill { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+  .pill.enacted { background: #dcfce7; color: #166534; }
+  .pill.challenged { background: #fef9c3; color: #854d0e; }
+  .law-effective { font-size: 11px; color: #64748b; }
+  .law-impact { font-size: 12px; color: #374151; line-height: 1.5; margin-top: 6px; }
+  .pbar { background: #e2e8f0; border-radius: 4px; height: 5px; margin-top: 10px; }
+  .pfill { background: #2E74B5; border-radius: 4px; height: 5px; }
+  .pnote { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .pnote span { font-weight: 700; color: #1F4E79; }
+  .card-box { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 16px; }
+  .card-box table { width: 100%; border-collapse: collapse; }
+  .card-box th { background: #1F4E79; color: white; padding: 9px 12px; text-align: left; font-size: 12px; font-weight: 600; }
+  .card-box td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; line-height: 1.5; }
+  .card-box tr:last-child td { border-bottom: none; }
+  .card-box tr:hover td { background: #f8fafc; }
+  .dbadge { display: inline-block; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .dbadge.past { background: #ffcccc; color: #C00000; }
+  .dbadge.future { background: #fff3cd; color: #7B5800; }
+  .dbadge.far { background: #e2efda; color: #375623; }
+  .ty { color: #C00000; font-weight: 700; }
+  .tn { color: #375623; font-weight: 700; }
+  .tu { color: #7B5800; font-weight: 700; }
+  .cg { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 14px; margin-bottom: 12px; }
+  .cg h3 { font-size: 13px; font-weight: 700; color: #1F4E79; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .urg { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .urg.red { background: #ffcccc; color: #C00000; }
+  .urg.orange { background: #ffe4d6; color: #C55A11; }
+  .urg.blue { background: #dbeafe; color: #1e40af; }
+  .ci { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; border-bottom: 1px solid #f8fafc; }
+  .ci:last-child { border-bottom: none; }
+  .ci input { margin-top: 2px; flex-shrink: 0; accent-color: #1F4E79; width: 14px; height: 14px; cursor: pointer; }
+  .ci label { font-size: 12px; line-height: 1.5; color: #374151; cursor: pointer; }
+  .ci input:checked + label { text-decoration: line-through; color: #94a3b8; }
+  .ufeed { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+  .uitem { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; }
+  .uitem:last-child { border-bottom: none; }
+  .udate { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+  .usrc { display: inline-block; font-size: 10px; background: #e0f2fe; color: #075985; border-radius: 4px; padding: 1px 5px; margin-left: 5px; font-weight: 600; }
+  .utitle { font-size: 13px; font-weight: 600; color: #1a2332; margin: 4px 0 3px; }
+  .ubody { font-size: 12px; color: #475569; line-height: 1.5; }
+  .utag { display: inline-block; font-size: 10px; border-radius: 4px; padding: 1px 6px; margin-top: 5px; font-weight: 600; }
+  .tag-action { background: #ffcccc; color: #C00000; }
+  .tag-watch { background: #fff3cd; color: #7B5800; }
+  .rlist { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 14px; }
+  .rlist h3 { font-size: 13px; font-weight: 700; color: #1F4E79; margin-bottom: 10px; }
+  .ri { padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+  .ri:last-child { border-bottom: none; }
+  .ri-title { font-size: 12px; font-weight: 600; color: #1a2332; margin-bottom: 1px; }
+  .ri-url { font-size: 11px; color: #2E74B5; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Washington State Legislation Tracker</h1>
+  <p>Green Rubino &mdash; Marketing, Media &amp; PR Agency | Tax &amp; Compliance Monitor</p>
+  <div class="header-meta">
+    <span class="badge urgent">Action Required</span>
+    <span class="badge">4 Laws Tracked</span>
+    <span class="badge">Updated Weekly</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview',this)">Overview</div>
+  <div class="tab" onclick="showTab('dates',this)">Key Dates</div>
+  <div class="tab" onclick="showTab('taxability',this)">Taxability Guide</div>
+  <div class="tab" onclick="showTab('actions',this)">Action Items</div>
+  <div class="tab" onclick="showTab('updates',this)">Updates Log</div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="content section active" id="tab-overview">
+  <div class="alert-banner">
+    <strong>Compliance Alert &mdash; April 1, 2026 deadline has passed</strong>
+    The transitional grace period for pre-existing contracts under ESSB 5814 expired April 1, 2026. All active client contracts must now collect Washington retail sales tax on advertising services. If you have not done this, take action immediately.
+  </div>
+  <div class="law-grid">
+    <div class="law-card critical">
+      <div class="law-name">ESSB 5814</div>
+      <div class="law-title">Advertising Services Tax</div>
+      <div class="status-row"><span class="pill enacted">Enacted</span><span class="law-effective">Effective Oct 1, 2025</span></div>
+      <div class="law-impact"><strong>Primary impact on your agency.</strong> Advertising, media buying, SEM, social, creative, and campaign planning are now subject to retail sales tax (~10.1% in Seattle) and B&amp;O reclassification from Services to Retailing (0.471%). Grace period expired Apr 1, 2026.</div>
+      <div class="pbar"><div class="pfill" style="width:100%"></div></div>
+      <div class="pnote">Status: <span>Fully in effect &mdash; compliance required now</span></div>
+    </div>
+    <div class="law-card warning">
+      <div class="law-name">B&amp;O Rate Changes</div>
+      <div class="law-title">Service B&amp;O Rate Increase (&gt;$5M)</div>
+      <div class="status-row"><span class="pill enacted">Enacted</span><span class="law-effective">Effective Oct 1, 2025</span></div>
+      <div class="law-impact"><strong>Limited SMB impact.</strong> Service &amp; Other Activities B&amp;O rose from 1.5% to 2.1% only for businesses over $5M gross income. Agencies under $5M: no change on non-advertising service B&amp;O. Advertising services shift to Retailing B&amp;O at 0.471%.</div>
+      <div class="pbar"><div class="pfill" style="width:100%"></div></div>
+      <div class="pnote">Status: <span>In effect &mdash; low risk for SMB agency</span></div>
+    </div>
+    <div class="law-card monitor">
+      <div class="law-name">ESSB 6346</div>
+      <div class="law-title">Millionaires' Income Tax (9.9%)</div>
+      <div class="status-row"><span class="pill challenged">Enacted &mdash; Legal Challenge Pending</span></div>
+      <div class="law-effective">Effective Jan 1, 2028 (if upheld)</div>
+      <div class="law-impact"><strong>Monitor only.</strong> 9.9% flat income tax on household income over $1M. Affects agency owners/partners earning above threshold. Constitutional challenge filed &mdash; outcome uncertain.</div>
+      <div class="pbar"><div class="pfill" style="width:30%"></div></div>
+      <div class="pnote"><span>~570 days</span> until effective date (if upheld)</div>
+    </div>
+    <div class="law-card relief">
+      <div class="law-name">SB 6346</div>
+      <div class="law-title">Small Business Relief Package</div>
+      <div class="status-row"><span class="pill enacted">Enacted</span><span class="law-effective">Most provisions: Jan 1, 2029</span></div>
+      <div class="law-impact"><strong>Future relief &mdash; 2029.</strong> Repeals sales tax on IT consulting, custom software, data processing, security, temp staffing. Expands small biz B&amp;O credits. Doubles B&amp;O filing threshold to $250K. Does NOT repeal advertising services tax.</div>
+      <div class="pbar"><div class="pfill" style="width:10%"></div></div>
+      <div class="pnote"><span>~930 days</span> until relief provisions take effect</div>
+    </div>
+  </div>
+  <div class="rlist">
+    <h3>Key Resources</h3>
+    <div class="ri"><div class="ri-title">WA DOR &mdash; ESSB 5814 FAQ (Official)</div><div class="ri-url">dor.wa.gov/taxes-rates/retail-sales-tax/services-newly-subject-retail-sales-tax/frequently-asked-questions-about-essb-5814</div></div>
+    <div class="ri"><div class="ri-title">WA DOR &mdash; Advertising Services Interim Guidance</div><div class="ri-url">dor.wa.gov/laws-rules/interim_guidance_statements/interim-guidance-statement-regarding-changes-made-essb-5814-advertising-services</div></div>
+    <div class="ri"><div class="ri-title">4As &mdash; Decoding WA's New Taxes on Advertising Services</div><div class="ri-url">aaaa.org/resource/4as-decoding-washington-states-new-taxes-on-advertising-services/</div></div>
+    <div class="ri"><div class="ri-title">WA DOR &mdash; Register for Retail Sales Tax Account</div><div class="ri-url">dor.wa.gov/open-business/apply-business-license</div></div>
+    <div class="ri"><div class="ri-title">Millionaires' Tax FAQ (WA Senate Democrats)</div><div class="ri-url">senatedemocrats.wa.gov/millionaires-tax-faq/</div></div>
+  </div>
+</div>
+
+<!-- KEY DATES -->
+<div class="content section" id="tab-dates">
+  <div class="card-box">
+    <table>
+      <thead><tr><th style="width:110px">Date</th><th style="width:80px">Status</th><th>What Changes</th><th>Law</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Oct 1, 2025</strong></td><td><span class="dbadge past">PAST</span></td><td>Advertising services become taxable &mdash; retail sales tax + retailing B&amp;O</td><td>ESSB 5814</td><td>Register for sales tax; reclassify B&amp;O; update invoices</td></tr>
+        <tr><td><strong>Apr 1, 2026</strong></td><td><span class="dbadge past">PAST</span></td><td>Transitional relief EXPIRED &mdash; all contracts now fully taxable</td><td>ESSB 5814</td><td style="color:#C00000;font-weight:600">All contracts must charge sales tax NOW</td></tr>
+        <tr><td><strong>Jan 1, 2028</strong></td><td><span class="dbadge future">~18 mo</span></td><td>9.9% Millionaires' Income Tax (if legal challenge fails)</td><td>ESSB 6346</td><td>Monitor court rulings; consult CPA if owners earn near $1M</td></tr>
+        <tr><td><strong>Jan 1, 2029</strong></td><td><span class="dbadge far">~31 mo</span></td><td>Sales tax repealed on IT consulting, software, data processing, temp staffing</td><td>SB 6346</td><td>Reassess vendor costs; claim expanded B&amp;O credits</td></tr>
+        <tr><td><strong>Jan 1, 2029</strong></td><td><span class="dbadge far">~31 mo</span></td><td>Small biz B&amp;O credits expand; filing threshold doubles to $250K</td><td>SB 6346</td><td>Evaluate if agency qualifies for higher credits or threshold relief</td></tr>
+        <tr><td><strong>Ongoing</strong></td><td><span class="dbadge future">Active</span></td><td>DOR issuing permanent rules to replace interim ESSB 5814 guidance</td><td>ESSB 5814</td><td>Watch DOR rulemaking &mdash; may clarify PR, branding, mixed-service taxability</td></tr>
+        <tr><td><strong>Ongoing</strong></td><td><span class="dbadge future">Active</span></td><td>Court challenge to Millionaires' Tax &mdash; constitutional uniformity clause</td><td>ESSB 6346</td><td>Monitor Citizen Action Defense Fund lawsuit</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAXABILITY -->
+<div class="content section" id="tab-taxability">
+  <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;">
+    <strong>Rule of thumb:</strong> If the service is related to creating, placing, or measuring the effectiveness of an advertisement, it is likely taxable under ESSB 5814. When in doubt, seek written guidance from the WA DOR before excluding a service.
+  </div>
+  <div class="card-box">
+    <table>
+      <thead><tr><th>Agency Service</th><th style="width:90px">Taxable?</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Digital ad creation (banners, social, display)</td><td><span class="ty">YES</span></td><td>Core taxable service</td></tr>
+        <tr><td>SEM / PPC campaign management</td><td><span class="ty">YES</span></td><td>Explicitly named in law</td></tr>
+        <tr><td>Social media advertising management</td><td><span class="ty">YES</span></td><td>Acquisition of internet advertising space</td></tr>
+        <tr><td>Digital media buying / placement</td><td><span class="ty">YES</span></td><td>Unless structured as resale with proper documentation &amp; reseller permit</td></tr>
+        <tr><td>Web campaign strategy &amp; planning</td><td><span class="ty">YES</span></td><td>Explicitly named in law</td></tr>
+        <tr><td>Website traffic analytics (for ad effectiveness)</td><td><span class="ty">YES</span></td><td>Explicitly named in law</td></tr>
+        <tr><td>Lead generation / SEO optimization</td><td><span class="ty">YES</span></td><td>Explicitly named in law</td></tr>
+        <tr><td>Graphic design for advertisements</td><td><span class="ty">YES</span></td><td>Production of advertisements</td></tr>
+        <tr><td>Copywriting / video production for ads</td><td><span class="ty">YES</span></td><td>Creation/preparation of advertisements</td></tr>
+        <tr><td>PR / media relations / earned media</td><td><span class="tu">UNCLEAR</span></td><td>NOT explicitly named. Likely not taxable if purely PR. Get written DOR guidance.</td></tr>
+        <tr><td>Crisis communications consulting</td><td><span class="tu">UNCLEAR</span></td><td>Likely service B&amp;O. Confirm with DOR or tax counsel.</td></tr>
+        <tr><td>Brand strategy / identity (non-ad)</td><td><span class="tu">UNCLEAR</span></td><td>May be taxable if deliverables feed into ad production. Depends on scope.</td></tr>
+        <tr><td>Event marketing / sponsorship consulting</td><td><span class="tu">PARTIAL</span></td><td>Ad placement components taxable; pure event consulting may not be.</td></tr>
+        <tr><td>TV / radio / print media buying</td><td><span class="tu">PARTIAL</span></td><td>Broadcast/print medium excluded; the buying/placement service component may still be taxable.</td></tr>
+        <tr><td>Billboard / out-of-home advertising</td><td><span class="tn">NO</span></td><td>Explicitly excluded from ESSB 5814</td></tr>
+        <tr><td>Newspaper / print advertising placement</td><td><span class="tn">NO</span></td><td>Newspapers and printing/publishing excluded</td></tr>
+        <tr><td>Intra-agency / affiliated group services</td><td><span class="tn">NO</span></td><td>Affiliated group transactions excluded (service B&amp;O rate applies instead)</td></tr>
+        <tr><td>Media pass-throughs (with reseller permit)</td><td><span class="tn">NO</span></td><td>Resale exemption applies &mdash; requires WA Reseller Permit from client and documentation chain</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:14px;font-size:12px;color:#374151;line-height:1.7;">
+    <strong style="color:#1F4E79">B&amp;O Rate Comparison:</strong><br>
+    Advertising services (Retailing B&amp;O): <strong>0.471%</strong> on gross receipts<br>
+    Non-advertising services, under $5M (Service B&amp;O): <strong>1.5%</strong> on gross receipts<br>
+    Non-advertising services, over $5M (Service B&amp;O): <strong>2.1%</strong> on gross receipts<br>
+    <em style="color:#64748b">Note: Retail sales tax (~10.1% in Seattle) applies ON TOP of B&amp;O for advertising services and is collected from clients.</em>
+  </div>
+</div>
+
+<!-- ACTION ITEMS -->
+<div class="content section" id="tab-actions">
+  <div class="cg">
+    <h3>Immediate &mdash; Do Now <span class="urg red">URGENT</span></h3>
+    <div class="ci"><input type="checkbox" id="a1" onchange="saveCheck(this)"><label for="a1">Verify retail sales tax is being collected on ALL advertising service invoices from October 1, 2025 forward. The April 1, 2026 grace period has passed &mdash; any gap is a compliance liability and may require amended returns.</label></div>
+    <div class="ci"><input type="checkbox" id="a2" onchange="saveCheck(this)"><label for="a2">Register for a WA Retail Sales Tax account with DOR if not already done: dor.wa.gov/open-business/apply-business-license</label></div>
+    <div class="ci"><input type="checkbox" id="a3" onchange="saveCheck(this)"><label for="a3">Reclassify advertising services revenue from "Service &amp; Other Activities" to "Retailing" on all WA excise tax returns from Q4 2025 forward.</label></div>
+    <div class="ci"><input type="checkbox" id="a4" onchange="saveCheck(this)"><label for="a4">File any past-due amended returns if sales tax was not collected. Consult a CPA about penalty exposure for the non-compliant period.</label></div>
+  </div>
+  <div class="cg">
+    <h3>Near-Term &mdash; Next 90 Days <span class="urg orange">HIGH PRIORITY</span></h3>
+    <div class="ci"><input type="checkbox" id="b1" onchange="saveCheck(this)"><label for="b1">Engage a WA-licensed CPA or tax attorney to review your full service mix &mdash; especially PR, branding, event, and consulting services whose taxability is unclear.</label></div>
+    <div class="ci"><input type="checkbox" id="b2" onchange="saveCheck(this)"><label for="b2">Set up resale documentation workflows for media buying pass-throughs. Collect WA Reseller Permits from clients where applicable.</label></div>
+    <div class="ci"><input type="checkbox" id="b3" onchange="saveCheck(this)"><label for="b3">Review all client MSAs to ensure contract language allows sales tax pass-through. Add tax pass-through clauses to all new agreements.</label></div>
+    <div class="ci"><input type="checkbox" id="b4" onchange="saveCheck(this)"><label for="b4">Update billing/accounting software with correct state + local sales tax rates by client location (~10.1% in Seattle; varies by city &mdash; use DOR's lookup tool).</label></div>
+    <div class="ci"><input type="checkbox" id="b5" onchange="saveCheck(this)"><label for="b5">Prepare a client FAQ explaining the new sales tax on invoices. Proactive communication prevents billing disputes.</label></div>
+    <div class="ci"><input type="checkbox" id="b6" onchange="saveCheck(this)"><label for="b6">Request written ruling from WA DOR on any services whose taxability is unclear (PR, brand strategy, event consulting). Written guidance protects against future audits.</label></div>
+  </div>
+  <div class="cg">
+    <h3>Ongoing Monitoring <span class="urg blue">WATCH</span></h3>
+    <div class="ci"><input type="checkbox" id="c1" onchange="saveCheck(this)"><label for="c1">Monitor WA DOR for permanent rules replacing ESSB 5814 interim guidance &mdash; may clarify scope of taxable services for mixed or hybrid service offerings.</label></div>
+    <div class="ci"><input type="checkbox" id="c2" onchange="saveCheck(this)"><label for="c2">Track court rulings on the Millionaires' Tax (ESSB 6346) constitutional challenge. If struck down, no action needed. If upheld, owners/partners earning &gt;$1M need to plan.</label></div>
+    <div class="ci"><input type="checkbox" id="c3" onchange="saveCheck(this)"><label for="c3">Track SB 6346 implementation as 2029 relief provisions are finalized &mdash; particularly expanded B&amp;O credits and service tax repeals affecting vendor costs.</label></div>
+    <div class="ci"><input type="checkbox" id="c4" onchange="saveCheck(this)"><label for="c4">Monitor 2026-27 WA legislative session for any amendments or new legislation affecting advertising, digital services, or marketing agencies.</label></div>
+  </div>
+</div>
+
+<!-- UPDATES LOG -->
+<div class="content section" id="tab-updates">
+  <div style="font-size:12px;color:#64748b;margin-bottom:12px;">Monitored weekly | Sources: WA DOR, 4As, Avalara, WA state legislature</div>
+  <div class="ufeed">
+    <div class="uitem">
+      <div><span class="udate">June 11, 2026</span><span class="usrc">INITIAL SETUP</span></div>
+      <div class="utitle">Tracker initialized with baseline research</div>
+      <div class="ubody">Dashboard created covering ESSB 5814, state B&amp;O rate changes, Millionaires' Tax (ESSB 6346), and SB 6346 small business relief. Key finding: April 1, 2026 transitional grace period has passed &mdash; full compliance required immediately on all advertising service invoices.</div>
+      <span class="utag tag-action">Action Required</span>
+    </div>
+    <div class="uitem">
+      <div><span class="udate">June 11, 2026</span><span class="usrc">WA DOR</span></div>
+      <div class="utitle">ESSB 5814 interim guidance in effect; permanent rules pending</div>
+      <div class="ubody">WA DOR issued interim guidance for advertising services in September/October 2025. Permanent rulemaking is underway. Final rules may clarify taxability for PR, branding, and mixed-service agency offerings. Monitor DOR announcements.</div>
+      <span class="utag tag-watch">Watch</span>
+    </div>
+    <div class="uitem">
+      <div><span class="udate">June 11, 2026</span><span class="usrc">COURT WATCH</span></div>
+      <div class="utitle">Millionaires' Tax (ESSB 6346) &mdash; legal challenge filed</div>
+      <div class="ubody">Citizen Action Defense Fund (former WA AG Rob McKenna) filed a constitutional challenge arguing ESSB 6346 violates Washington's uniformity clause. Court outcome determines whether the 9.9% income tax takes effect January 1, 2028. No ruling yet.</div>
+      <span class="utag tag-watch">Watch</span>
+    </div>
+    <div style="padding:10px 14px;background:#f8fafc;text-align:center;font-size:12px;color:#94a3b8;">
+      Future weekly updates will appear above this line
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+function saveCheck(el) {
+  localStorage.setItem('chk_' + el.id, el.checked);
+}
+function loadChecks() {
+  document.querySelectorAll('input[type=checkbox]').forEach(el => {
+    if (localStorage.getItem('chk_' + el.id) === 'true') el.checked = true;
+  });
+}
+loadChecks();
+</script>
+</body>
+</html>
